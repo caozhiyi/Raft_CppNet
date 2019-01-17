@@ -4,6 +4,15 @@
     <Filter Include="base">
       <UniqueIdentifier>{29afc740-ba7b-4c5d-8ebb-67b0558c0136}</UniqueIdentifier>
     </Filter>
+    <Filter Include="zk">
+      <UniqueIdentifier>{d10b3b8b-2d97-44ec-9386-0490eff75e33}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="zk\include">
+      <UniqueIdentifier>{4e9ac474-665b-4469-8b5a-813d20440a39}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="zk\generated">
+      <UniqueIdentifier>{669ba286-e3d0-4b80-a59f-8c942728cf28}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="base\Any.h">
@@ -46,6 +55,27 @@
       <Filter>base</Filter>
     </ClInclude>
     <ClInclude Include="CLogReplication.h" />
+    <ClInclude Include="zk\include\proto.h">
+      <Filter>zk\include</Filter>
+    </ClInclude>
+    <ClInclude Include="zk\include\recordio.h">
+      <Filter>zk\include</Filter>
+    </ClInclude>
+    <ClInclude Include="zk\include\winconfig.h">
+      <Filter>zk\include</Filter>
+    </ClInclude>
+    <ClInclude Include="zk\include\zookeeper.h">
+      <Filter>zk\include</Filter>
+    </ClInclude>
+    <ClInclude Include="zk\include\zookeeper_log.h">
+      <Filter>zk\include</Filter>
+    </ClInclude>
+    <ClInclude Include="zk\include\zookeeper_version.h">
+      <Filter>zk\include</Filter>
+    </ClInclude>
+    <ClInclude Include="zk\generated\zookeeper.jute.h">
+      <Filter>zk\generated</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="base\Buffer.cpp">
@@ -65,5 +95,8 @@
     </ClCompile>
     <ClCompile Include="CLogReplication.cpp" />
     <ClCompile Include="test.cpp" />
+    <ClCompile Include="zk\generated\zookeeper.jute.c">
+      <Filter>zk\generated</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

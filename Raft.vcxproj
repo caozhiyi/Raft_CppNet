@@ -125,6 +125,13 @@
     <ClInclude Include="base\TaskQueue.h" />
     <ClInclude Include="base\TimeTool.h" />
     <ClInclude Include="CLogReplication.h" />
+    <ClInclude Include="zk\generated\zookeeper.jute.h" />
+    <ClInclude Include="zk\include\proto.h" />
+    <ClInclude Include="zk\include\recordio.h" />
+    <ClInclude Include="zk\include\winconfig.h" />
+    <ClInclude Include="zk\include\zookeeper.h" />
+    <ClInclude Include="zk\include\zookeeper_log.h" />
+    <ClInclude Include="zk\include\zookeeper_version.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="base\Buffer.cpp" />
@@ -134,6 +141,7 @@
     <ClCompile Include="base\TimeTool.cpp" />
     <ClCompile Include="CLogReplication.cpp" />
     <ClCompile Include="test.cpp" />
+    <ClCompile Include="zk\generated\zookeeper.jute.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,3 +1,5 @@
+#include <exception>
+#include <string.h>         //for memset
 #include "CLogReplication.h"
 
 #define FLAG_STR "%R%N"
@@ -7,7 +9,7 @@
 CBinLog::CBinLog(std::string fine_name) : _file_name(fine_name), _stop(false) {
 	_file_stream.open(_file_name, std::ios::in|std::ios::app| std::ios::out);
 	if (!_file_stream.good()) {
-		throw std::exception("open log file failed");
+		throw std::exception(std::logic_error("open log file failed"));
 	}
 }
 
