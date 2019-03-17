@@ -1,8 +1,6 @@
 #ifndef HEADER_SINGLE
 #define HEADER_SINGLE
 
-#include <mutex>
-
 template<typename T>
 class CSingle
 {
