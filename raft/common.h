@@ -19,14 +19,18 @@ enum MsgType {
 };
 
 struct MsgHead {
-	int	type;
-	int follower_num;	// 跟随者数量
-	int length;
+	int	_type;
+	int _follower_num;	// 跟随者数量
+	int _length;
 };
 
 struct Msg {
-	MsgHead head;
-	std::string msg;
+	MsgHead _head;
+	std::string _msg;
+};
+
+struct NodeInfo {
+	std::string _ip;
 };
 
 #endif
