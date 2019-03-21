@@ -1,0 +1,15 @@
+#ifndef HEADER_CPARSER
+#define HEADER_CPARSER
+
+// Ω‚Œˆ–≠“È
+
+class CParser
+{
+public:
+	CParser();
+	~CParser();
+
+
+};
+
+#endif

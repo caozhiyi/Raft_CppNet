@@ -1,14 +1,21 @@
-SRCS = $(wildcard ./base/*.cpp ./*.cpp ./zkgenerated/*.c ./zk/*.cpp)
+SRCS = $(wildcard ./base/*.cpp			\
+				  ./zkgenerated/*.c		\
+				  ./zk/*.cpp			\
+				  ./raft/*.cpp			\
+				  ./net/*.cpp			\
+				  ./net/linux/*.cpp)
 
 OBJS = $(SRCS:.cpp = .o)
 
 CC = g++
 
-INCLUDES = -I. \
-           -I./base \
-		   -I./zk \
-           -I./zk/include \
-           -I./zk/generated 
+INCLUDES = -I.					\
+           -I./base				\
+		   -I./zk				\
+           -I./zk/include		\
+           -I./zk/generated		\
+		   -I./net				\
+		   -I./raft
 
 LIBS = -L./lib
 
