@@ -15,13 +15,15 @@ INCLUDES = -I.					\
            -I./zk/include		\
            -I./zk/generated		\
 		   -I./net				\
+		   -I./net/linux		\
 		   -I./raft
 
 LIBS = -L./lib
 
-CCFLAGS = -lpthread -fPIC -m64 -std=c++11 -lstdc++ -fpermissive -lzookeeper_mt -pthread
+CCFLAGS = -lpthread -fPIC -m64 -std=c++11 -lstdc++ -fpermissive -pthread -lzookeeper_mt
 
-OUTPUT = test.out
+
+OUTPUT = raft_node
 
 all:$(OUTPUT)
 

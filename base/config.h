@@ -1,11 +1,9 @@
-#ifndef HEADER_CTIME
-#define HEADER_CTIME
+#ifndef HEADER_CONFIG
+#define HEADER_CONFIG
 
 #include <string>
 #include <map>
 #include <mutex>
-
-const int NOT_FIND = -1;
 
 class CConfig
 {
@@ -16,8 +14,9 @@ public:
 	bool LoadFile(const std::string& path);
 	
 	int GetIntValue(const std::string& key);
-	int GetStringValue(const std::string& key);
-	int GetDoubleValue(const std::string& key);
+	std::string GetStringValue(const std::string& key);
+	double GetDoubleValue(const std::string& key);
+	bool GetBoolValue(const std::string& key);
 
 private:
 	void _Trim(std::string line);

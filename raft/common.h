@@ -13,9 +13,13 @@ enum Status {
 //消息类型
 enum MsgType {
 	Heart	 = 1,
-	Client	 = 2,
-	Campaign = 3,	// 竞争leader
-	Vote	 = 4	// 投票
+	Campaign = 2,	// 竞争leader
+	Vote	 = 3	// 投票
+};
+
+//节点信息
+struct NodeInfo {
+	std::string _ip;
 };
 
 struct MsgHead {

@@ -21,7 +21,9 @@ bool CConfig::LoadFile(const std::string& path) {
 	std::string value;
 	std::map<std::string, std::string> temp_map;
 	while (!file.eof()) {
-		line << file;
+		char buf[1024] = { 0 };
+		file.getline(buf, 1024);
+		line = buf;
 		_Trim(line);
 		if (line[0] == '#') {
 			continue;
@@ -49,11 +51,11 @@ int CConfig::GetIntValue(const std::string& key) {
 	
 	} catch (...) {
 		LOG_ERROR("get config int value failed.");
-		return NOT_FIND;
+		return -1;
 	}
 }
 
-int CConfig::GetStringValue(const std::string& key) {
+std::string CConfig::GetStringValue(const std::string& key) {
 	try {
 		std::unique_lock<std::mutex> lock(_mutex);
 		auto iter = _config_map.find(key);
@@ -63,11 +65,11 @@ int CConfig::GetStringValue(const std::string& key) {
 
 	} catch (...) {
 		LOG_ERROR("get config string value failed.");
-		return NOT_FIND;
+		return "";
 	}
 }
 
-int CConfig::GetDoubleValue(const std::string& key) {
+double CConfig::GetDoubleValue(const std::string& key) {
 	try {
 		std::unique_lock<std::mutex> lock(_mutex);
 		auto iter = _config_map.find(key);
@@ -77,7 +79,22 @@ int CConfig::GetDoubleValue(const std::string& key) {
 
 	} catch (...) {
 		LOG_ERROR("get config double value failed.");
-		return NOT_FIND;
+		return -1;
+	}
+}
+
+bool CConfig::GetBoolValue(const std::string& key) {
+	try {
+		std::unique_lock<std::mutex> lock(_mutex);
+		auto iter = _config_map.find(key);
+		if (iter != _config_map.end()) {
+			return iter->second == "true" || iter->second == "1";
+		}
+
+	}
+	catch (...) {
+		LOG_ERROR("get config double value failed.");
+		return false;
 	}
 }
 

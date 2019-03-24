@@ -205,7 +205,7 @@ void CEpoll::ProcessEvent() {
 		wait_time = _timer.TimeoutCheck(timer_vec);
 		//if there is no timer event. wait until recv something
         if (wait_time == 0 && timer_vec.empty()) {
-            wait_time = INFINITE;
+            wait_time = -1;
         } else {
             wait_time = wait_time > 0 ? wait_time : 1;
         }
@@ -319,7 +319,7 @@ bool CEpoll::_ReserOneShot(CMemSharePtr<CEventHandler>& event, int event_flag, u
 	return true;
 }
 
-void CEpoll::_DoTimeoutEvent(std::vector<CMemSharePtr<CTimerEvent>>& timer_vec); {
+void CEpoll::_DoTimeoutEvent(std::vector<CMemSharePtr<CTimerEvent>>& timer_vec) {
     for (auto iter = timer_vec.begin(); iter != timer_vec.end(); ++iter) {
         if ((*iter)->_event_flag & EVENT_READ) {
             CMemSharePtr<CEventHandler> event_ptr = (*iter)->_event.Lock();
