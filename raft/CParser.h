@@ -1,6 +1,7 @@
 #ifndef HEADER_CPARSER
 #define HEADER_CPARSER
 
+#include "common.h"
 // Ω‚Œˆ–≠“È
 
 class CParser
@@ -9,7 +10,8 @@ public:
 	CParser();
 	~CParser();
 
-
+	static std::string Encode(const Msg& msg);
+	static Msg Decode(const std::string& msg_str);
 };
 
 #endif

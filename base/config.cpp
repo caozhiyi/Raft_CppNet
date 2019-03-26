@@ -11,6 +11,7 @@ bool CConfig::ReLoadFile() {
 }
 
 bool CConfig::LoadFile(const std::string& path) {
+	SetFilePath(path);
 	std::fstream file(path);
 	if (!file) {
 		LOG_ERROR("load config file failed, can't open file.");

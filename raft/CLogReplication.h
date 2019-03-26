@@ -27,7 +27,7 @@ public:
     //get the newest time
     Time GetNewestTime();
 
-//private:
+private:
 	//get the newer log
 	std::vector<std::string> GetTargetLogStr(int count);
 	//parser log str to BinLog
