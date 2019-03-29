@@ -3,7 +3,7 @@
 #include "Log.h"
 
 CNode::CNode(const std::string& config_path) :
-	_status(Follower), 
+	_role(Candidate),
 	_config_path(config_path) {
 
 }
@@ -14,6 +14,9 @@ CNode::~CNode() {
 }
 
 bool CNode::Init() {
+	// begin log thread
+	_bin_log.Start();
+
 	LoadConfig();
 	_local_port = _config.GetIntValue("local_port");
 	_local_ip = _config.GetStringValue("local_ip");
@@ -72,66 +75,251 @@ void CNode::LoadConfig() {
 	_config.LoadFile(_config_path);
 }
 
-void CNode::SendAllHreart() {
+void CNode::SendAllHeart() {
 	Msg msg;
 	msg._head._type = Heart;
 	
 	{
 		std::unique_lock<std::mutex> lock(_msg_mutex);
-		msg._msg = _cur_msg;
+		msg._msg = std::move(_cur_msg);
+		msg._head._msg_version = GetNewestTime();
+		_cur_version = msg._head._msg_version;
 		_cur_msg.clear();
 	}
 
 	std::unique_lock<std::mutex> lock(_socket_mutex);
-	msg._head._follower_num = _socket_list.size();
+	msg._head._follower_num = _socket_map.size();
+	// make msg string
 	std::string msg_str = CParser::Encode(msg);
-	for (auto iter = _socket_list.begin(); iter != _socket_list.end(); ++iter) {
+	for (auto iter = _socket_list.begin(); iter != _socket_map.end(); ++iter) {
 		iter->SyncWrite(msg_str.c_str(), msg_str.length());
 	}
 }
 
-void CNode::HandleHeart(const Msg& msg) {
+void CNode::SendAllVote() {
+	Msg msg;
+	msg._head._type = Campaign;
+	std::unique_lock<std::mutex> lock(_socket_mutex);
+	// make msg string
+	std::string msg_str = CParser::Encode(msg);
+	for (auto iter = _socket_map.begin(); iter != _socket_map.end(); ++iter) {
+		iter->SyncWrite(msg_str.c_str(), msg_str.length());
+	}
+}
+
+void CNode::SendMsg(const std::string& ip_port, const Msg& msg) {
+	// make msg string
+	std::string msg_str = CParser::Encode(msg);
+
+	std::unique_lock<std::mutex> lock(_socket_mutex);
+	auto iter = _socket_map.find(ip_port);
+	if (iter != _socket_map.end()) {
+		iter->SyncWrite(msg_str.c_str(), msg_str.length());
+	}
+}
+
+void CNode::HandleMsg(const std::string ip_port, const Msg* msg) {
+	if (!msg){
+		LOG_ERROR("get a invalid msg.");
+		return;
+	}
+	switch (msg->_head._type)
+	{
+	case Heart:
+		HandleHeart(*msg);
+		break;
+	case ReHeart:
+		HandleReHeart(*msg);
+		break;
+	case Campaign:
+		HandleCampaign(*msg);
+		break;
+	case Vote:
+		HandleVote(*msg);
+		break;
+	case Sync:
+		HandleSync(*msg);
+		break;
+	default:
+		LOG_ERROR("get a unknow type msg.");
+		break;
+	}
+	delete msg;
+}
+
+void CNode::HandleHeart(const std::string& ip_port, const Msg& msg) {
+	if (_role != Follower) {
+		_role = Follower;
+	}
+
+	// reset vote num
+	_vote_count = 0;
+	_heart.ResetTimer();
+
+	if (msg._head._num_msg > 0) {
+		for (size_t i = 0; i < msg._msg.size(); i++) {
+			LOG_INFO("recv a msg from client : %s", msg._msg[i].c_str());
+			_msg_vec.push_back(std::move(msg._msg[i]));
+		}
+	}
+	Msg msg;
+	msg._head._type = ReHeart;
+	SendMsg(ip_port, msg);
+}
+
+void CNode::HandleReHeart(const std::string& ip_port, const Msg& msg) {
+	_msg_re_count++;
+	std::unique_lock<std::mutex> lock(_socket_mutex);
+	// get more than half response
+	if (_msg_re_count > _socket_map.size()/2) {
+		_msg_re_count = 0;
+
+		
+
+		// TODO send client response
+	}
+}
+
+void CNode::HandleCampaign(const std::string& ip_port, const Msg& msg) {
+	Msg msg;
+	if (_role == Leader) {
+		std::unique_lock<std::mutex> lock(_socket_mutex);
+		// the leader is bigger than me
+		if (msg._head._follower_num > _socket_map.size()) {
+			_role = Follower;
+			msg._head._type = Vote;
+
+.		// send heart whit version
+		} else {
+			msg._head._type = Heart;
+			msg._head._msg_version = _cur_version;
+		}
+	}
+	SendMsg(ip_port, msg);
+}
+
+void CNode::HandleVote(const std::string& ip_port, const Msg& msg) {
+	_vote_count++;
+	std::unique_lock<std::mutex> lock(_socket_mutex);
+	// can be a leader
+	if (_vote_count > _socket_map.size()) {
+		_role = Leader;
+		SendAllHeart();
+	}
+}
+
+void CNode::HandleSync(const std::string& ip_port, const Msg& msg) {
 
 }
 
-void CNode::HandleReHeart(const Msg& msg) {
+void CNode::HandleDoneMsg(const std::string& ip_port, const Msg& msg) {
 
 }
 
-void CNode::HandleCampaign(const Msg& msg) {
-
-}
-
-void CNode::HandleVote(const Msg& msg) {
-
-}
-
-void CNode::HandleSync(const Msg& msg) {
-
-}
-
-void CNode::HandleClient(const Msg& msg) {
+void CNode::HandleClient(const std::string& ip_port, const Msg& msg) {
 
 }
 
 // net io
 void CNode::_ReadCallBack(CMemSharePtr<CSocket>& socket, int err) {
+	std::string ip = socket->GetAddress();
+	short port = socket->GetPort();
+	ip.append(":");
+	ip.append(std::to_string(port));
 
+	if (err & EVENT_ERROR_CLOSED) {
+		LOG_ERROR("a connect lost msg. err:%d, ip:%s", err, ip.c_str());
+		std::unique_lock<std::mutex> lock(_socket_mutex);
+		auto iter = _socket_map.find(ip);
+		if (iter != _socket_map.end()) {
+			_socket_map.erase(iter);
+		}
+		return;
+	}
+
+	if (err != EVENT_ERROR_NO) {
+		LOG_ERROR("Read msg error. err:%d, ip:%s ", err, ip.c_str());
+	}
+	int len = socket->_read_event->_off_set;
+	if (len < header_len) {
+		socket->SyncRead();
+		return;
+	}
+
+	char buf[4096] = {0};
+	// read header
+	len = socket->_read_event->_buffer->ReadNotClear(buf, header_len);
+	if (len < header_len) {
+		socket->SyncRead();
+		return;
+	}
+	// can make a msg pool.
+	Msg *msg = new Msg;
+	*msg = Decode(buf);
+	int body_len = msg._head._body_len;
+	if (body_len > 0) {
+		len = socket->_read_event->_buffer->GetCanReadSize();
+		// not recv a complete msg
+		if (len < body_len + header_len) {
+			socket->SyncRead();
+			return;
+
+		} else {
+			socket->_read_event->_buffer->Read(buf, body_len + header_len);
+			*msg = Decode(buf);
+		}
+
+	} else {
+		// clean the buffer
+		socket->_read_event->_buffer->Read(buf, header_len);
+	}
+	
+	LOG_INFO << "get a msg from %s" << ip.c_str();
+	HandleMsg(ip, msg);
 }
 
 void CNode::_WriteCallBack(CMemSharePtr<CSocket>& socket, int err) {
+	std::string ip = socket->GetAddress();
+	short port = socket->GetPort();
+	ip.append(":");
+	ip.append(std::to_string(port));
 
+	if (err & EVENT_ERROR_CLOSED) {
+		LOG_ERROR("a connect lost msg. err:%d, ip:%s", err, ip.c_str());
+		std::unique_lock<std::mutex> lock(_socket_mutex);
+		auto iter = _socket_map.find(ip);
+		if (iter != _socket_map.end()) {
+			_socket_map.erase(iter);
+		}
+		return;
+	}
+
+	LOG_INFO << "send a msg to %s" << ip.c_str();
 }
 
 void CNode::_AcceptCallBack(CMemSharePtr<CSocket>& socket, int err) {
+	std::string ip = socket->GetAddress();
+	short port = socket->GetPort();
+	ip.append(":");
+	ip.append(std::to_string(port));
 
+	_socket_map[ip] = socket;
+	LOG_INFO << "recv a connect from ip  %s" << ip.c_str();
 }
 
 // timer
 void CNode::_HeartCallBack() {
-
+	if (_role == Leader) {
+		SendAllHreart();
+		LoadConfig();
+		LOG_INFO << "heart call back.";
+	}
 }
 
 void CNode::_TimeOutCallBack() {
-
+	if (_role == Leader) {
+		SendAllHreart();
+		LoadConfig();
+		LOG_INFO << "heart call back.";
+	}
 }

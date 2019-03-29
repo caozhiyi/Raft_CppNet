@@ -43,7 +43,6 @@ void CHeart::StartTimer() {
 }
 
 void CHeart::ResetTimer() {
-	_heart_time_count = 0;
 	_time_out_count = 0;
 }
 

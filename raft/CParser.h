@@ -11,7 +11,7 @@ public:
 	~CParser();
 
 	static std::string Encode(const Msg& msg);
-	static Msg Decode(const std::string& msg_str);
+	static Msg Decode(const std::string& msg_str, bool only_header = false);
 };
 
 #endif

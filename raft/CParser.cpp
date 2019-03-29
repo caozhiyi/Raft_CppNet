@@ -26,17 +26,19 @@ std::string CParser::Encode(const Msg& msg) {
 	return std::move(ret);
 }
 
-Msg CParser::Decode(const std::string& msg_str) {
+Msg CParser::Decode(const std::string& msg_str, bool only_header) {
 	Msg msg;
 	memcpy(msg._head, msg_str.c_str(), header_len);
 	msg_str = msg_str.substr(header_len + 1);
-	int pos = 0;
-	std::string one_msg;
-	for (int i = 0; i < msg._head._num_msg; i++) {
-		pos = msg_str.find_first_of(SPILT);
-		one_msg = msg_str.substr(0, pos);
-		msg_str = msg_str.substr(pos + sizeof(SPILT));
-		msg._msg.push_back(one_msg);
+	if (!only_header) {
+		int pos = 0;
+		std::string one_msg;
+		for (int i = 0; i < msg._head._num_msg; i++) {
+			pos = msg_str.find_first_of(SPILT);
+			one_msg = msg_str.substr(0, pos);
+			msg_str = msg_str.substr(pos + sizeof(SPILT));
+			msg._msg.push_back(one_msg);
+		}
 	}
 	return std::move(msg);
 }
