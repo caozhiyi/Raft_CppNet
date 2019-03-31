@@ -1,7 +1,7 @@
 #include "CHeart.h"
 #include "Runnable.h"
 
-CHeart::CHeart(int step, int heart_time, int time_out) : 
+CHeart::CHeart() : 
 	_step(0),
 	_heart_time(0),
 	_time_out(0),
@@ -51,7 +51,7 @@ void CHeart::Stop() {
 }
 
 void CHeart::ProcessTimer() {
-	while (!heart->_stop) {
+	while (!_stop) {
 		CRunnable::Sleep(_step);
 		_time_out_count += _step;
 		_heart_time_count += _step;

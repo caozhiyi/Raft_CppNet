@@ -5,7 +5,7 @@
 
 #include "CHeart.h"
 #include "CLogReplication.h"
-#include "command.h"
+#include "common.h"
 #include "NetObject.h"
 #include "config.h"
 
@@ -24,7 +24,7 @@ public:
 	// time out. to Candidate
 	void SendAllVote();
 
-	void SendMsg(const std::string& ip_port, const Msg& msg);
+	void SendMsg(const std::string& ip_port, Msg& msg);
 
 	void HandleMsg(const std::string ip_port, const Msg* msg);
 	void HandleHeart(const std::string& ip_port, const Msg& msg);
@@ -32,6 +32,7 @@ public:
 	void HandleCampaign(const std::string& ip_port, const Msg& msg);
 	void HandleVote(const std::string& ip_port, const Msg& msg);
 	void HandleSync(const std::string& ip_port, const Msg& msg);
+	void HandleToSync(const std::string& ip_port, const Msg& msg);
 	void HandleDoneMsg(const std::string& ip_port, const Msg& msg);
 
 	void HandleClient(const std::string& ip_port, const Msg& msg);
@@ -56,7 +57,6 @@ private:
 	CHeart		_heart;
 	std::atomic_int _msg_re_count;	// reheart' num
 	std::atomic_int _vote_count;	// vote's num
-	Time		_cur_version;
 	CBinLog     _bin_log;
 
 	std::string _zk_ip_port;
@@ -69,6 +69,7 @@ private:
 	std::mutex _socket_mutex;
 	std::map<std::string, CMemSharePtr<CSocket>>	_socket_map;
 
+	std::mutex _vec_mutex;
 	std::vector<std::string>	_msg_vec;	// all recv client msg
 };
 

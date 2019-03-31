@@ -35,6 +35,7 @@ void CBinLog::PushLog(Time time, std::string log) {
     BinLog bin_log;
 	bin_log.first  = time;
 	bin_log.second = log;
+	_newest_time = time;
     Push(std::move(bin_log));
 }
 
@@ -56,12 +57,11 @@ bool CBinLog::GetLog(Time time, std::vector<BinLog>& log_vec) {
 }
 
 Time CBinLog::GetNewestTime() {
-	std::vector<std::string> vec = GetTargetLogStr(1);
-	if (vec.empty()) {
-		return 0;
-	}
-	BinLog bin_log = StrToBinLog(vec[0]);
-	return bin_log.first;
+	return _newest_time;
+}
+
+Time CBinLog::GetUTC() {
+	return std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
 }
 
 std::vector<std::string> CBinLog::GetTargetLogStr(int count) {

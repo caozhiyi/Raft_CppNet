@@ -4,25 +4,25 @@
 #include <string>
 #include <vector>
 
-//节点状态
+// node role
 enum NodeRole {
 	Follower  = 1,	
 	Candidate = 2,
 	Leader    = 3
 };
 
-//消息类型
+// message type
 enum MsgType {
-	Heart	 = 1,	// 心跳
-	ReHeart  = 2,	// 心跳回复
-	DoneMsg  = 3,	// 确定将消息落库
-	Campaign = 4,	// 竞争leader
-	Vote	 = 5,	// 投票
-	Sync	 = 6	// 同步
-
+	Heart	 = 1,   // heart 
+	ReHeart  = 2,	// heart response
+	DoneMsg  = 3,	// client receive and push the message to file
+	Campaign = 4,	// campaign to be leader
+	Vote	 = 5,	// vote 
+	Sync	 = 6,	// sync the message from  leader
+	ToSync   = 7    // follower get it to sync from leader
 };
 
-//节点信息
+// node info
 struct NodeInfo {
 	std::string _ip;
 	int			_port;
@@ -30,10 +30,19 @@ struct NodeInfo {
 
 struct MsgHead {
 	int	_type;
-	int _follower_num = 0;	// 跟随者数量
-	int _body_len = 0;		// 消息体长度
-	int _num_msg = 0;		// 携带消息数量
-	long long _msg_version = 0;	// 消息版本 递增
+	int _follower_num;	// the leader's num of follower
+	int _body_len;		// message body len
+	int _num_msg;		// the body's num of message
+	long long _newest_version;
+
+	MsgHead() {
+		_follower_num = 0;
+		_body_len = 0;
+		_num_msg = 0;
+		_newest_version = 0;
+	}
+
+	~MsgHead() {}
 };
 
 const int header_len = sizeof(MsgHead);
@@ -41,10 +50,9 @@ const int header_len = sizeof(MsgHead);
 struct Msg {
 	MsgHead _head;
 	std::vector<std::string> _msg;
-};
 
-struct NodeInfo {
-	std::string _ip;
+	Msg() {}
+	~Msg() {}
 };
 
 #endif

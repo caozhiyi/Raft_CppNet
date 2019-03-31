@@ -7,8 +7,6 @@
 #include "CZkClient.h"
 #include "Single.h"
 
-const char* ZK_NODE = "/node_info/";
-
 class CZkNodeInfo : public CSingle<CZkNodeInfo> {
 public:
 	CZkNodeInfo();

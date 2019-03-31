@@ -1,8 +1,10 @@
 #include <map>
 #include "CZkNodeInfo.h"
-#include "CZKClient.h"
+#include "CZkClient.h"
 #include "common.h"
 #include "Log.h"
+
+const char* ZK_NODE = "/node_info/";
 
 CZkNodeInfo::CZkNodeInfo() {
 
@@ -16,7 +18,7 @@ bool CZkNodeInfo::Init(const std::string& local_ip_port, const std::string& zk_i
 	_local_ip_port	= local_ip_port;
 	_zk_ip_port = zk_ip_port;
 
-	bool ret = CZkClient::Instance()->ConnectZK(_zk_ip_port, 100000);
+	bool ret = CZkClient::Instance().ConnectZK(_zk_ip_port, 100000);
 	_GetNodeList();
 	return ret;
 }
@@ -24,7 +26,7 @@ bool CZkNodeInfo::Init(const std::string& local_ip_port, const std::string& zk_i
 bool CZkNodeInfo::RegisterNode() {
 	std::string path = ZK_NODE;
 	path.append(_local_ip_port);
-	return CZkClient::Instance()->CreateNode(path, _local_ip_port, true);
+	return CZkClient::Instance().CreateNode(path, _local_ip_port, true);
 }
 
 const std::vector<NodeInfo>& CZkNodeInfo::GetNodeList() {
@@ -37,7 +39,7 @@ int CZkNodeInfo::GetNodeNum() {
 
 void CZkNodeInfo::_GetNodeList() {
 	std::map<std::string, std::string> tmp_map;
-	CZkClient::Instance()->GetAllChildren(ZK_NODE, tmp_map, true);
+	CZkClient::Instance().GetAllChildren(ZK_NODE, tmp_map, true);
 
 	std::unique_lock<std::mutex> lock(_mutex);
 	_node_list.clear();
@@ -55,7 +57,7 @@ void CZkNodeInfo::_GetNodeList() {
 
 static void CZkNodeInfo::_CallBack(int type, std::string path) {
 	if (path == ZK_NODE && type == CHILD_EVENT_DEF) {
-		CZkNodeInfo::Instance()->_GetNodeList();
-		LOG_INFO << "node info list changed";
+		CZkNodeInfo::Instance()._GetNodeList();
+		LOG_INFO("node info list changed.");
 	}
 }

@@ -10,7 +10,7 @@ public:
 	CParser();
 	~CParser();
 
-	static std::string Encode(const Msg& msg);
+	static std::string Encode(Msg& msg);
 	static Msg Decode(const std::string& msg_str, bool only_header = false);
 };
 

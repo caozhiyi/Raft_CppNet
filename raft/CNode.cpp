@@ -1,9 +1,10 @@
+#include "Log.h"
 #include "CNode.h"
 #include "CZkNodeInfo.h"
-#include "Log.h"
+#include "CParser.h"
 
 CNode::CNode(const std::string& config_path) :
-	_role(Candidate),
+	_role(Follower),
 	_config_path(config_path) {
 
 }
@@ -33,22 +34,24 @@ bool CNode::Init() {
 	std::string local_ip_port_str = _local_ip + std::to_string(_local_port);
 	bool ret = true;
 	// connect zk
-	ret = CZkNodeInfo::Instance()->Init(local_ip_port_str, _zk_ip_port);
+	ret = CZkNodeInfo::Instance().Init(local_ip_port_str, _zk_ip_port);
 	if (ret == false) {
 		LOG_ERROR("connect zk server failed.");
 		return false;
 	}
 
 	// get node info list
-	const std::vector<NodeInfo> node_info_list = CZkNodeInfo::Instance()->GetNodeList();
+	const std::vector<NodeInfo> node_info_list = CZkNodeInfo::Instance().GetNodeList();
 
 	// connect all node
 	{
+		std::string ip_port;
 		std::unique_lock<std::mutex> lock(_socket_mutex);
 		for (auto iter = node_info_list.begin(); iter != node_info_list.end(); ++iter) {
 			auto soket = _net.Connection(iter->_port, iter->_ip);
+			ip_port = iter->_ip + ":" + std::to_string(iter->_port);
 			if (soket) {
-				_socket_list.push_back(soket);
+				_socket_map["ip_port"] = soket;
 
 			} else {
 				LOG_ERROR("connect node failed. ip:%s, port:%d", iter->_ip.c_str(), iter->_port);
@@ -58,7 +61,7 @@ bool CNode::Init() {
 	}
 
 	// create node on zk
-	CZkNodeInfo::Instance()->RegisterNode();
+	CZkNodeInfo::Instance().RegisterNode();
 
 	// start timer
 	int step = _config.GetIntValue("timer_step");
@@ -78,12 +81,11 @@ void CNode::LoadConfig() {
 void CNode::SendAllHeart() {
 	Msg msg;
 	msg._head._type = Heart;
+	msg._head._newest_version = _bin_log.GetNewestTime();
 	
 	{
 		std::unique_lock<std::mutex> lock(_msg_mutex);
 		msg._msg = std::move(_cur_msg);
-		msg._head._msg_version = GetNewestTime();
-		_cur_version = msg._head._msg_version;
 		_cur_msg.clear();
 	}
 
@@ -91,8 +93,8 @@ void CNode::SendAllHeart() {
 	msg._head._follower_num = _socket_map.size();
 	// make msg string
 	std::string msg_str = CParser::Encode(msg);
-	for (auto iter = _socket_list.begin(); iter != _socket_map.end(); ++iter) {
-		iter->SyncWrite(msg_str.c_str(), msg_str.length());
+	for (auto iter = _socket_map.begin(); iter != _socket_map.end(); ++iter) {
+		iter->second->SyncWrite(msg_str.c_str(), msg_str.length());
 	}
 }
 
@@ -103,18 +105,18 @@ void CNode::SendAllVote() {
 	// make msg string
 	std::string msg_str = CParser::Encode(msg);
 	for (auto iter = _socket_map.begin(); iter != _socket_map.end(); ++iter) {
-		iter->SyncWrite(msg_str.c_str(), msg_str.length());
+		iter->second->SyncWrite(msg_str.c_str(), msg_str.length());
 	}
 }
 
-void CNode::SendMsg(const std::string& ip_port, const Msg& msg) {
+void CNode::SendMsg(const std::string& ip_port, Msg& msg) {
 	// make msg string
 	std::string msg_str = CParser::Encode(msg);
 
 	std::unique_lock<std::mutex> lock(_socket_mutex);
 	auto iter = _socket_map.find(ip_port);
 	if (iter != _socket_map.end()) {
-		iter->SyncWrite(msg_str.c_str(), msg_str.length());
+		iter->second->SyncWrite(msg_str.c_str(), msg_str.length());
 	}
 }
 
@@ -126,19 +128,19 @@ void CNode::HandleMsg(const std::string ip_port, const Msg* msg) {
 	switch (msg->_head._type)
 	{
 	case Heart:
-		HandleHeart(*msg);
+		HandleHeart(ip_port, *msg);
 		break;
 	case ReHeart:
-		HandleReHeart(*msg);
+		HandleReHeart(ip_port, *msg);
 		break;
 	case Campaign:
-		HandleCampaign(*msg);
+		HandleCampaign(ip_port, *msg);
 		break;
 	case Vote:
-		HandleVote(*msg);
+		HandleVote(ip_port, *msg);
 		break;
 	case Sync:
-		HandleSync(*msg);
+		HandleSync(ip_port, *msg);
 		break;
 	default:
 		LOG_ERROR("get a unknow type msg.");
@@ -156,68 +158,145 @@ void CNode::HandleHeart(const std::string& ip_port, const Msg& msg) {
 	_vote_count = 0;
 	_heart.ResetTimer();
 
+	// cur node lost message. sync from loeader
+	if (msg._head._newest_version != _bin_log.GetNewestTime() && _bin_log.GetNewestTime() != 0) {
+		Time version = 0;
+		if (msg._head._num_msg > 0) {
+			BinLog bin_log =_bin_log.StrToBinLog(msg._msg[msg._msg.size()-1]);	
+			version = bin_log.first;
+		
+		} else {
+			version = msg._head._newest_version;
+		}
+		Msg re_msg;
+		re_msg._head._type = Sync;
+		re_msg._head._newest_version = version;
+		SendMsg(ip_port, re_msg);
+		LOG_INFO("send a sync msg to leader : %s", ip_port.c_str());
+		return;
+	}
+
+	// get messsage
 	if (msg._head._num_msg > 0) {
+		std::unique_lock<std::mutex> lock(_vec_mutex);
 		for (size_t i = 0; i < msg._msg.size(); i++) {
 			LOG_INFO("recv a msg from client : %s", msg._msg[i].c_str());
 			_msg_vec.push_back(std::move(msg._msg[i]));
 		}
 	}
-	Msg msg;
-	msg._head._type = ReHeart;
-	SendMsg(ip_port, msg);
+
+	// send response
+	Msg re_msg;
+	re_msg._head._type = ReHeart;
+	SendMsg(ip_port, re_msg);
 }
 
 void CNode::HandleReHeart(const std::string& ip_port, const Msg& msg) {
-	_msg_re_count++;
-	std::unique_lock<std::mutex> lock(_socket_mutex);
-	// get more than half response
-	if (_msg_re_count > _socket_map.size()/2) {
-		_msg_re_count = 0;
+	if (_role == Leader) {
+		_msg_re_count++;
+		std::unique_lock<std::mutex> lock(_socket_mutex);
+		// get more than half response
+		if (_msg_re_count > _socket_map.size() / 2) {
+			_msg_re_count = 0;
 
-		
 
-		// TODO send client response
+
+			// TODO send client response
+		}
 	}
+	//not a leader do nothing
 }
 
 void CNode::HandleCampaign(const std::string& ip_port, const Msg& msg) {
-	Msg msg;
+	Msg re_msg;
 	if (_role == Leader) {
-		std::unique_lock<std::mutex> lock(_socket_mutex);
-		// the leader is bigger than me
-		if (msg._head._follower_num > _socket_map.size()) {
-			_role = Follower;
-			msg._head._type = Vote;
+		re_msg._head._type = ToSync;
+	
+	} else if (_role == Follower) {
+		re_msg._head._type = Vote;
+		_heart.ResetTimer();
 
-.		// send heart whit version
-		} else {
-			msg._head._type = Heart;
-			msg._head._msg_version = _cur_version;
-		}
+	} else if (_role == Candidate) {
+		// do nothing
 	}
-	SendMsg(ip_port, msg);
+	LOG_INFO("recv a Campaign msg from ip : %s, role : %d", ip_port.c_str(), _role);
+	SendMsg(ip_port, re_msg);
 }
 
 void CNode::HandleVote(const std::string& ip_port, const Msg& msg) {
-	_vote_count++;
-	std::unique_lock<std::mutex> lock(_socket_mutex);
-	// can be a leader
-	if (_vote_count > _socket_map.size()) {
-		_role = Leader;
-		SendAllHeart();
+	if (_role == Candidate) {
+		_vote_count++;
+		std::unique_lock<std::mutex> lock(_socket_mutex);
+		// can be a leader
+		if (_vote_count > _socket_map.size()) {
+			_role = Leader;
+			SendAllHeart();
+		}
 	}
+	// not a Candidater do nothing
 }
 
 void CNode::HandleSync(const std::string& ip_port, const Msg& msg) {
+	if (_role == Leader) {
+		Msg msg;
+		msg._head._newest_version = msg._head._newest_version;
 
+
+		std::vector<BinLog> log_vec;
+		_bin_log.GetLog(msg._head._newest_version, log_vec);
+		for (size_t i = 0; i < log_vec.size(); i++) {
+			msg._msg.push_back(std::move(_bin_log.BinLogToStr(log_vec[i])));
+		}
+		{
+			std::unique_lock<std::mutex> lock(_socket_mutex);
+			msg._head._follower_num = _socket_map.size();
+		}
+		SendMsg(ip_port, msg);
+	}
+	LOG_INFO("recv a SYNC msg from ip : %s, role : %d", ip_port.c_str(), _role);
+	//not a leader do nothing
+}
+
+void CNode::HandleToSync(const std::string& ip_port, const Msg& msg) {
+	if (_role != Follower) {
+		_role = Follower;
+	}
+
+	// reset vote num
+	_vote_count = 0;
+	_heart.ResetTimer();
+
+	Msg re_msg;
+	re_msg._head._type = Sync;
+	re_msg._head._newest_version = _bin_log.GetNewestTime();
+	SendMsg(ip_port, re_msg);
 }
 
 void CNode::HandleDoneMsg(const std::string& ip_port, const Msg& msg) {
-
+	if (_role == Follower) {
+		std::vector<std::string> vec;
+		{
+			std::unique_lock<std::mutex> lock(_vec_mutex);
+			vec = std::move(_msg_vec);
+		}
+		BinLog log;
+		for (size_t i = 0; i < vec.size(); i++) {
+			log = _bin_log.StrToBinLog(vec[i]);
+			_bin_log.PushLog(log.first, std::move(log.second));
+		}
+	}
 }
 
 void CNode::HandleClient(const std::string& ip_port, const Msg& msg) {
-
+	if (_role == Leader) {
+		std::unique_lock<std::mutex> lock(_msg_mutex);
+		BinLog log;
+		for (size_t i = 0; i < msg._msg.size(); i++) {
+			log.first = _bin_log.GetUTC();
+			log.second = msg._msg[i];
+			_cur_msg.push_back(std::move(_bin_log.BinLogToStr(log)));
+		}
+	}
 }
 
 // net io
@@ -255,18 +334,19 @@ void CNode::_ReadCallBack(CMemSharePtr<CSocket>& socket, int err) {
 	}
 	// can make a msg pool.
 	Msg *msg = new Msg;
-	*msg = Decode(buf);
-	int body_len = msg._head._body_len;
+	*msg = CParser::Decode(buf);
+	int body_len = msg->_head._body_len;
 	if (body_len > 0) {
 		len = socket->_read_event->_buffer->GetCanReadSize();
 		// not recv a complete msg
 		if (len < body_len + header_len) {
 			socket->SyncRead();
+			delete msg;
 			return;
 
 		} else {
 			socket->_read_event->_buffer->Read(buf, body_len + header_len);
-			*msg = Decode(buf);
+			*msg = CParser::Decode(buf);
 		}
 
 	} else {
@@ -274,7 +354,7 @@ void CNode::_ReadCallBack(CMemSharePtr<CSocket>& socket, int err) {
 		socket->_read_event->_buffer->Read(buf, header_len);
 	}
 	
-	LOG_INFO << "get a msg from %s" << ip.c_str();
+	LOG_INFO("get a msg from %s", ip.c_str());
 	HandleMsg(ip, msg);
 }
 
@@ -294,7 +374,7 @@ void CNode::_WriteCallBack(CMemSharePtr<CSocket>& socket, int err) {
 		return;
 	}
 
-	LOG_INFO << "send a msg to %s" << ip.c_str();
+	LOG_INFO("send a msg to %s", ip.c_str());;
 }
 
 void CNode::_AcceptCallBack(CMemSharePtr<CSocket>& socket, int err) {
@@ -304,22 +384,27 @@ void CNode::_AcceptCallBack(CMemSharePtr<CSocket>& socket, int err) {
 	ip.append(std::to_string(port));
 
 	_socket_map[ip] = socket;
-	LOG_INFO << "recv a connect from ip  %s" << ip.c_str();
+	LOG_INFO("recv a connect from ip  %s", ip.c_str());
 }
 
 // timer
 void CNode::_HeartCallBack() {
 	if (_role == Leader) {
-		SendAllHreart();
+		_heart.ResetTimer();
+		SendAllHeart();
 		LoadConfig();
-		LOG_INFO << "heart call back.";
+		LOG_INFO("heart call back.");
 	}
 }
 
 void CNode::_TimeOutCallBack() {
 	if (_role == Leader) {
-		SendAllHreart();
+		SendAllHeart();
 		LoadConfig();
-		LOG_INFO << "heart call back.";
+		LOG_INFO("heart call back.");
+	
+	} else if (_role) {
+		_role = Candidate;
+		SendAllVote();
 	}
 }

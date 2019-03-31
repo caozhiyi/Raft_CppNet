@@ -1,3 +1,4 @@
+#include <string.h>
 #include "CParser.h"
 
 const char* SPILT = "%R%N";
@@ -10,9 +11,9 @@ CParser::~CParser() {
 
 }
 
-std::string CParser::Encode(const Msg& msg) {
+std::string CParser::Encode(Msg& msg) {
 	char head[header_len + 1] = { 0 };
-	memcpy(head, msg._head, header_len);
+	memcpy(head, &msg._head, header_len);
 	std::string body;
 	for (int i = 0; i < msg._msg.size(); i++) {
 		body.append(msg._msg[i]);
@@ -28,7 +29,7 @@ std::string CParser::Encode(const Msg& msg) {
 
 Msg CParser::Decode(const std::string& msg_str, bool only_header) {
 	Msg msg;
-	memcpy(msg._head, msg_str.c_str(), header_len);
+	memcpy(&msg._head, msg_str.c_str(), header_len);
 	msg_str = msg_str.substr(header_len + 1);
 	if (!only_header) {
 		int pos = 0;

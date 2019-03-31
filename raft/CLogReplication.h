@@ -27,7 +27,9 @@ public:
     //get the newest time
     Time GetNewestTime();
 
-private:
+	Time GetUTC();
+
+public:
 	//get the newer log
 	std::vector<std::string> GetTargetLogStr(int count);
 	//parser log str to BinLog
@@ -39,7 +41,7 @@ private:
     std::string        _file_name;
     std::fstream       _file_stream;
     std::atomic<bool>  _stop;
-    Time               _newest_time;
+	std::atomic<Time>  _newest_time;
 	std::mutex		   _mutex;
 };
 
