@@ -43,3 +43,21 @@ Msg CParser::Decode(const std::string& msg_str, bool only_header) {
 	}
 	return std::move(msg);
 }
+
+std::string CParser::Encode(ClientMsg& msg) {
+	char head[client_header_len + 1] = { 0 };
+	memcpy(head, &msg._head, client_header_len);
+
+	msg._head._body_len = msg._msg.length();
+	std::string ret(head);
+	ret.append(msg._msg);
+	return std::move(ret);
+}
+
+ClientMsg CParser::DecodeClient(const std::string& msg_str, bool only_header) {
+	ClientMsg msg;
+	memcpy(&msg._head, msg_str.c_str(), client_header_len);
+	msg_str = msg_str.substr(client_header_len + 1);
+	msg._msg = msg_str;
+	return std::move(msg);
+}

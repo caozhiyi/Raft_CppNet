@@ -5,6 +5,7 @@
 
 CNode::CNode(const std::string& config_path) :
 	_role(Follower),
+	_client_listener(nullptr),
 	_config_path(config_path) {
 
 }
@@ -15,10 +16,15 @@ CNode::~CNode() {
 }
 
 bool CNode::Init() {
+	if (_client_listener) {
+		LOG_ERROR("Can't mulit init.");
+		return false;
+	}
 	// begin log thread
 	_bin_log.Start();
 
 	LoadConfig();
+	int listen_port = _config.GetIntValue("listen_port");
 	_local_port = _config.GetIntValue("local_port");
 	_local_ip = _config.GetStringValue("local_ip");
 	_zk_ip_port = _config.GetStringValue("zk_ip_port");
@@ -27,6 +33,10 @@ bool CNode::Init() {
 	_net.SetAcceptCallback(std::bind(&CNode::_AcceptCallBack, this, std::placeholders::_1, std::placeholders::_2));
 	_net.SetReadCallback(std::bind(&CNode::_ReadCallBack, this, std::placeholders::_1, std::placeholders::_2));
 	_net.SetWriteCallback(std::bind(&CNode::_WriteCallBack, this, std::placeholders::_1, std::placeholders::_2));
+
+	// start net with 2 thread
+	_net.Init(2);
+	_net.ListenAndAccept(_local_port, _local_ip);
 
 	_heart.SetHeartCallBack(std::bind(&CNode::_HeartCallBack, this));
 	_heart.SetTimeOutCallBack(std::bind(&CNode::_TimeOutCallBack, this));
@@ -70,6 +80,10 @@ bool CNode::Init() {
 	LOG_INFO("Init heart timer. timer_step:%d, heart_time:%d, time_out:%d", step, heart_time, time_out);
 
 	_heart.Init(step, heart_time, time_out);
+
+	// start client listen
+	_client_listener = new CListener(this);
+	_client_listener->Init(_local_ip, listen_port);
 
 	return true;
 }
@@ -186,8 +200,11 @@ void CNode::HandleHeart(const std::string& ip_port, const Msg& msg) {
 	}
 
 	// send response
+	BinLog bin_log = _bin_log.StrToBinLog(_msg_vec[_msg_vec.size() - 1]);
+	Time version = bin_log.first;
 	Msg re_msg;
 	re_msg._head._type = ReHeart;
+	re_msg._head._newest_version = version;
 	SendMsg(ip_port, re_msg);
 }
 
@@ -199,9 +216,7 @@ void CNode::HandleReHeart(const std::string& ip_port, const Msg& msg) {
 		if (_msg_re_count > _socket_map.size() / 2) {
 			_msg_re_count = 0;
 
-
-
-			// TODO send client response
+			_client_listener->SendMsg(msg._head._newest_version, RAFT_OK);
 		}
 	}
 	//not a leader do nothing
@@ -287,15 +302,10 @@ void CNode::HandleDoneMsg(const std::string& ip_port, const Msg& msg) {
 	}
 }
 
-void CNode::HandleClient(const std::string& ip_port, const Msg& msg) {
+void CNode::HandleClient(const BinLog& log) {
 	if (_role == Leader) {
 		std::unique_lock<std::mutex> lock(_msg_mutex);
-		BinLog log;
-		for (size_t i = 0; i < msg._msg.size(); i++) {
-			log.first = _bin_log.GetUTC();
-			log.second = msg._msg[i];
-			_cur_msg.push_back(std::move(_bin_log.BinLogToStr(log)));
-		}
+		_cur_msg.push_back(std::move(log));
 	}
 }
 
@@ -384,6 +394,7 @@ void CNode::_AcceptCallBack(CMemSharePtr<CSocket>& socket, int err) {
 	ip.append(std::to_string(port));
 
 	_socket_map[ip] = socket;
+	socket->SyncRead();
 	LOG_INFO("recv a connect from ip  %s", ip.c_str());
 }
 

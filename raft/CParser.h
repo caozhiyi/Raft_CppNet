@@ -12,6 +12,9 @@ public:
 
 	static std::string Encode(Msg& msg);
 	static Msg Decode(const std::string& msg_str, bool only_header = false);
+
+	static std::string Encode(ClientMsg& msg);
+	static ClientMsg DecodeClient(const std::string& msg_str, bool only_header = false);
 };
 
 #endif

@@ -8,6 +8,7 @@
 #include "common.h"
 #include "NetObject.h"
 #include "config.h"
+#include "CListener.h"
 
 class CNode
 {
@@ -35,7 +36,7 @@ public:
 	void HandleToSync(const std::string& ip_port, const Msg& msg);
 	void HandleDoneMsg(const std::string& ip_port, const Msg& msg);
 
-	void HandleClient(const std::string& ip_port, const Msg& msg);
+	void HandleClient(const BinLog& log);
 
 private:
 	// net io
@@ -62,6 +63,8 @@ private:
 	std::string _zk_ip_port;
 	std::string _local_ip;
 	int			_local_port;
+
+	CListener*  _client_listener;
 
 	std::mutex _msg_mutex;
 	std::vector<std::string>	_cur_msg;

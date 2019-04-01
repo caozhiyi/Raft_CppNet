@@ -55,4 +55,21 @@ struct Msg {
 	~Msg() {}
 };
 
+enum STATUS {
+	RAFT_OK = 0,
+    RAFT_FAILED = 1
+};
+
+struct ClientMsgHead {
+	int _status;
+	int _body_len;
+};
+
+const int client_header_len = sizeof(ClientMsgHead);
+
+struct ClientMsg {
+	ClientMsgHead _head;
+	std::string   _msg;
+};
+
 #endif
