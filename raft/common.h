@@ -57,7 +57,8 @@ struct Msg {
 
 enum STATUS {
 	RAFT_OK = 0,
-    RAFT_FAILED = 1
+    RAFT_FAILED = 1,
+	RAFT_RELEADER = 2
 };
 
 struct ClientMsgHead {

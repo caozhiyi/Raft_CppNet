@@ -5,6 +5,8 @@ SRCS = $(wildcard ./base/*.cpp			\
 				  ./net/*.cpp			\
 				  ./net/linux/*.cpp)
 
+
+
 OBJS = $(SRCS:.cpp = .o)
 
 CC = g++
@@ -23,17 +25,21 @@ LIBS = -L./lib
 CCFLAGS = -lpthread -fPIC -m64 -std=c++11 -lstdc++ -fpermissive -pthread -lzookeeper_mt
 
 
-OUTPUT = raft_node
 
-all:$(OUTPUT)
+SEV = raft_server
+CLI = raft_client
 
-$(OUTPUT) : $(OBJS)
+all:$(SEV) $(CLI)
+
+$(SEV) : $(OBJS) ./exe/Server.cpp
+	$(CC) $^ -o $@ $(INCLUDES) $(LIBS) $(CCFLAGS)
+
+$(CLI) : $(OBJS) ./exe/Client.cpp
 	$(CC) $^ -o $@ $(INCLUDES) $(LIBS) $(CCFLAGS)
 
 %.o : %.c
 	$(CC) -c $< $(CCFLAGS)
 
-clean:
-	rm -rf *.out *.o
-
 .PHONY:clean
+clean:
+	rm -rf *.o

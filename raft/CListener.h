@@ -1,26 +1,26 @@
-#ifndef HEADER_CNODE
-#define HEADER_CNODE
+#ifndef HEADER_CLISTENER
+#define HEADER_CLISTENER
 
 #include <mutex>
 #include <queue>
 #include <functional>
 
-#include "common.h"
 #include "NetObject.h"
-#include "config.h"
+#include "common.h"
 
-typedef long long Time;
-typedef std::function<void(int)> _send_call_back;
+typedef std::function<void(int)> SendCallBack;
+typedef unsigned long long Time;
 
 class CListener
 {
 public:
+    friend class CNode;
 	CListener(CNode* cur_node);
 	~CListener();
 
 	bool Init(std::string ip, int port);
-
 	void SendMsg(Time version, int status);
+	void SendMsg(const std::string& ip_port, ClientMsg& msg);
 
 private:
 	// net io
@@ -30,15 +30,16 @@ private:
 
 
 private:
+	CNetObject	_net;
 	std::string _ip;
 	short       _port;
 	CNode*      _cur_node;
 
 	std::mutex _send_mutex;
-	std::queue<std::pair<Time, _send_call_back>>    _send_queue;
+	std::queue<std::pair<Time, SendCallBack>>    _send_queue;
 
 	std::mutex _socket_mutex;
-	std::map<std::string, CMemSharePtr<CSocket>>	_socket_map;
+	std::map<std::string, CMemSharePtr<CSocket>> _socket_map;
 };
 
 #endif

@@ -88,6 +88,10 @@ bool CNode::Init() {
 	return true;
 }
 
+void CNode::Join() {
+	_net.Join();
+}
+
 void CNode::LoadConfig() {
 	_config.LoadFile(_config_path);
 }
@@ -121,6 +125,14 @@ void CNode::SendAllVote() {
 	for (auto iter = _socket_map.begin(); iter != _socket_map.end(); ++iter) {
 		iter->second->SyncWrite(msg_str.c_str(), msg_str.length());
 	}
+}
+
+bool CNode::IsLeader() {
+	return _role == Leader;
+}
+
+std::string CNode::GetLeaderInfo() {
+	return _leader_ip_port;
 }
 
 void CNode::SendMsg(const std::string& ip_port, Msg& msg) {
@@ -166,8 +178,9 @@ void CNode::HandleMsg(const std::string ip_port, const Msg* msg) {
 void CNode::HandleHeart(const std::string& ip_port, const Msg& msg) {
 	if (_role != Follower) {
 		_role = Follower;
+		_leader_ip_port = ip_port;
+		LOG_INFO("Leader change to %s", ip_port.c_str());
 	}
-
 	// reset vote num
 	_vote_count = 0;
 	_heart.ResetTimer();
@@ -304,8 +317,9 @@ void CNode::HandleDoneMsg(const std::string& ip_port, const Msg& msg) {
 
 void CNode::HandleClient(const BinLog& log) {
 	if (_role == Leader) {
+        std::string log_str = _bin_log.BinLogToStr(log);
 		std::unique_lock<std::mutex> lock(_msg_mutex);
-		_cur_msg.push_back(std::move(log));
+		_cur_msg.push_back(std::move(log_str));
 	}
 }
 

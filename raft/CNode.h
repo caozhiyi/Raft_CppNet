@@ -17,6 +17,7 @@ public:
 	~CNode();
 
 	bool Init();
+	void Join();
 
 	void LoadConfig();
 
@@ -24,6 +25,9 @@ public:
 	void SendAllHeart();
 	// time out. to Candidate
 	void SendAllVote();
+
+	bool IsLeader();
+	std::string GetLeaderInfo();
 
 	void SendMsg(const std::string& ip_port, Msg& msg);
 
@@ -59,6 +63,7 @@ private:
 	std::atomic_int _msg_re_count;	// reheart' num
 	std::atomic_int _vote_count;	// vote's num
 	CBinLog     _bin_log;
+	std::string _leader_ip_port;
 
 	std::string _zk_ip_port;
 	std::string _local_ip;
