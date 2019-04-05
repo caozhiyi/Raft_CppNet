@@ -18,7 +18,7 @@ public:
 	bool Init(std::string ip, int port);
 
 	void SendMsg(const std::string& msg_str);
-	void SetResponseBack(ResponseBack& call_back);
+	void SetResponseBack(ResponseBack call_back);
 
 private:
 	// net io

@@ -11,7 +11,7 @@
 typedef unsigned long long Time;
 typedef std::pair<Time, std::string> BinLog;
 
-class CBinLog: public CRunnableAloneTaskList<BinLog>, public CSingle<BinLog> {
+class CBinLog: public CRunnableAloneTaskList<BinLog> {
 public:
     CBinLog(std::string fine_name = "raft_bin_log.log");
     ~CBinLog();
@@ -40,7 +40,6 @@ public:
 private:
     std::string        _file_name;
     std::fstream       _file_stream;
-    std::atomic<bool>  _stop;
 	std::atomic<Time>  _newest_time;
 	std::mutex		   _mutex;
 };

@@ -3,6 +3,8 @@
 #include "CZkNodeInfo.h"
 #include "CParser.h"
 
+#include <iostream>
+
 CNode::CNode(const std::string& config_path) :
 	_role(Follower),
 	_client_listener(nullptr),
@@ -12,7 +14,8 @@ CNode::CNode(const std::string& config_path) :
 
 
 CNode::~CNode() {
-
+    _bin_log.Stop();
+    StopNet();
 }
 
 bool CNode::Init() {
@@ -20,14 +23,18 @@ bool CNode::Init() {
 		LOG_ERROR("Can't mulit init.");
 		return false;
 	}
+    
 	// begin log thread
 	_bin_log.Start();
-
-	LoadConfig();
-	int listen_port = _config.GetIntValue("listen_port");
-	_local_port = _config.GetIntValue("local_port");
-	_local_ip = _config.GetStringValue("local_ip");
-	_zk_ip_port = _config.GetStringValue("zk_ip_port");
+	if (!LoadConfig()) {
+        LOG_ERROR("load config file failed.");
+        return false;
+	}
+	
+    int listen_port = _config.GetIntValue("listen_port");
+    _local_port = _config.GetIntValue("local_port");
+    _local_ip = _config.GetStringValue("local_ip");
+    _zk_ip_port = _config.GetStringValue("zk_ip_port");
 
 	// set call back
 	_net.SetAcceptCallback(std::bind(&CNode::_AcceptCallBack, this, std::placeholders::_1, std::placeholders::_2));
@@ -41,12 +48,12 @@ bool CNode::Init() {
 	_heart.SetHeartCallBack(std::bind(&CNode::_HeartCallBack, this));
 	_heart.SetTimeOutCallBack(std::bind(&CNode::_TimeOutCallBack, this));
 
-	std::string local_ip_port_str = _local_ip + std::to_string(_local_port);
+	std::string local_ip_port_str = _local_ip + ":" + std::to_string(_local_port);
 	bool ret = true;
 	// connect zk
 	ret = CZkNodeInfo::Instance().Init(local_ip_port_str, _zk_ip_port);
 	if (ret == false) {
-		LOG_ERROR("connect zk server failed.");
+		LOG_ERROR("Init the zk connect failed.");
 		return false;
 	}
 
@@ -92,8 +99,13 @@ void CNode::Join() {
 	_net.Join();
 }
 
-void CNode::LoadConfig() {
-	_config.LoadFile(_config_path);
+void CNode::StopNet() {
+    _net.Dealloc();
+    _net.Join();
+}
+
+bool CNode::LoadConfig() {
+	return _config.LoadFile(_config_path);
 }
 
 void CNode::SendAllHeart() {

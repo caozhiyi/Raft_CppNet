@@ -49,7 +49,6 @@ void CNetObject::Dealloc() {
 	for (auto iter = _actions_map.begin(); iter != _actions_map.end(); ++iter) {
 		iter->second->Dealloc();
 	}
-	_actions_map.clear();
 #ifndef __linux__
 	DeallocSocket();
 #endif // __linux__
@@ -57,8 +56,12 @@ void CNetObject::Dealloc() {
 
 void CNetObject::Join() {
 	for (size_t i = 0; i < _thread_vec.size(); ++i) {
-		_thread_vec[i]->join();
+        if (_thread_vec[i]) {
+            _thread_vec[i]->join();
+        }
 	}
+    _thread_vec.clear();
+    _actions_map.clear();
 }
 
 void CNetObject::SetReadCallback(const call_back& func) {

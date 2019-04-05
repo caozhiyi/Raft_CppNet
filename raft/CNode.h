@@ -18,8 +18,9 @@ public:
 
 	bool Init();
 	void Join();
+    void StopNet();
 
-	void LoadConfig();
+	bool LoadConfig();
 
 	// only leader send heart
 	void SendAllHeart();

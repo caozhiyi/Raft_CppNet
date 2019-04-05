@@ -217,6 +217,7 @@ void CEpoll::ProcessEvent() {
 
 		if (res > 0) {
 			LOG_DEBUG("epoll_wait get events! num :%d, TheadId : %d", res, std::this_thread::get_id());
+
 			_DoEvent(event_vec, res);
 			_DoTaskList();
 
@@ -237,6 +238,7 @@ void CEpoll::ProcessEvent() {
 	if (close(_pipe[1]) == -1) {
 		LOG_ERROR("_pipe[1] close failed! error : %d", errno);
 	}
+    LOG_INFO("return the net io thread");
 }
 
 void CEpoll::PostTask(std::function<void(void)>& task) {
@@ -364,6 +366,7 @@ void CEpoll::_DoEvent(std::vector<epoll_event>& event_vec, int num) {
 		}
 		if (!sock) {
 			LOG_WARN("the event is nullptr, index : %d", i);
+            _run = false;
 			continue;
 		}
 		if (((uintptr_t)sock) & 1) {

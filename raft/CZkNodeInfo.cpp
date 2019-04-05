@@ -19,12 +19,21 @@ bool CZkNodeInfo::Init(const std::string& local_ip_port, const std::string& zk_i
 	_zk_ip_port = zk_ip_port;
 
 	bool ret = CZkClient::Instance().ConnectZK(_zk_ip_port, 100000);
+    if (ret == false) {
+        return false;
+    }
 	_GetNodeList();
 	return ret;
 }
 
 bool CZkNodeInfo::RegisterNode() {
 	std::string path = ZK_NODE;
+    if (!CZkClient::Instance().NodeExista(path)) {
+        
+        if (!CZkClient::Instance().CreateNode(path, "")) {
+            return false;
+        }
+    }
 	path.append(_local_ip_port);
 	return CZkClient::Instance().CreateNode(path, _local_ip_port, true);
 }

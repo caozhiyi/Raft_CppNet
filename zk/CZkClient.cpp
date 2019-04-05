@@ -1,6 +1,8 @@
 #include "CZkClient.h"
 #include "Log.h"
 
+#include <iostream>
+
 #define BUF_SIZE 1024*5   //5kb
 
 CZkClient::CZkClient():
@@ -27,12 +29,21 @@ CZkClient::~CZkClient() {
 }
 
 bool CZkClient::ConnectZK() {
-    _zk_handle = zookeeper_init(_host_name.c_str(), CZkClient::Watcher, _time_out, nullptr, this, 0);
+    LOG_INFO("connect to zk ip : %s", _host_name.c_str());
+    char zk_ip[256] = { 0 };
+    strcpy(zk_ip, _host_name.c_str());
+    zk_ip[_host_name.length() - 1] = '\0';
+    _zk_handle = zookeeper_init(zk_ip, CZkClient::Watcher, _time_out, 0, this, 0);
     if (_zk_handle == nullptr) {
-        LOG_ERROR("Connect zookeeper field");
+        LOG_ERROR("Connect zookeeper field, errno : %d", errno);
+        _is_connected = false;
+    
+    } else if (zoo_state(_zk_handle) != ZOO_CONNECTED_STATE) {
+        _is_connected = true;
+    } else {
         _is_connected = false;
     }
-    _is_connected = true;
+
     return _is_connected;
 }
 
@@ -49,11 +60,21 @@ bool CZkClient::CreateNode(const std::string& path, const std::string& value, bo
             return false;
         }
     }
+
+    char c_path[256] = { 0 };
+    strcpy(c_path, path.c_str());
+    c_path[path.length() - 1] = '\0';
+
+    char c_value[256] = { 0 };
+    strcpy(c_value, value.c_str());
+    c_value[value.length() - 1] = '\0';
     
-    int ret = zoo_create(_zk_handle, path.c_str(), value.c_str(), value.length(), 
+    LOG_INFO("Create a zookeeper node. path : %s", c_path);
+    LOG_INFO("Create a zookeeper node. value : %s", c_value);
+    int ret = zoo_create(_zk_handle, c_path, c_value, strlen(c_value),
         &ZOO_OPEN_ACL_UNSAFE, temp ? ZOO_EPHEMERAL : 0, nullptr, 0);
     if (ret != ZOK) {
-        LOG_ERROR("Create zookeeper node field, ret : %d, path : %s, value : %s", ret, path.c_str(), value.c_str());
+        LOG_ERROR("Create zookeeper node field, ret : %d, err : %s", ret, zerror(ret));
         return false;
     }
     return true;
@@ -67,9 +88,13 @@ bool CZkClient::DeleteNode(const std::string& path, int version) {
         }
     }
 
-    int ret = zoo_delete(_zk_handle, path.c_str(), version);
+    char c_path[256] = { 0 };
+    strcpy(c_path, path.c_str());
+    c_path[path.length() - 1] = '\0';
+
+    int ret = zoo_delete(_zk_handle, c_path, version);
     if (ret != ZOK) {
-        LOG_ERROR("Delete zookeeper node field, ret : %d, path : %s", ret, path.c_str());
+        LOG_ERROR("Delete zookeeper node field, ret : %d, err : %s", ret, zerror(ret));
         return false;
     }
     return true;
@@ -83,8 +108,15 @@ int CZkClient::NodeExista(const std::string& path, bool watch) {
         }
     }
 
-    int ret = zoo_exists(_zk_handle, path.c_str(), watch?1:0, nullptr);
-    return ret;
+    char c_path[256] = { 0 };
+    strcpy(c_path, path.c_str());
+    c_path[path.length() - 1] = '\0';
+    int ret = zoo_exists(_zk_handle, c_path, watch?1:0, nullptr);
+    if (ret != ZOK) {
+        LOG_ERROR("zoo exists field, ret : %d, err : %s", ret, zerror(ret));
+        return false;
+    }
+    return ret != ZNONODE;
 }
 
 bool CZkClient::GetNodeValue(const std::string& path, std::string& value, bool watch) {
@@ -94,12 +126,16 @@ bool CZkClient::GetNodeValue(const std::string& path, std::string& value, bool w
             return false;
         }
     }
+    
+    char c_path[256] = { 0 };
+    strcpy(c_path, path.c_str());
+    c_path[path.length() - 1] = '\0';
 
     char buf[BUF_SIZE] = { 0 };
     int len = BUF_SIZE;
-    int ret = zoo_get(_zk_handle, path.c_str(), watch?1:0, buf, &len, nullptr);
+    int ret = zoo_get(_zk_handle, c_path, watch?1:0, buf, &len, nullptr);
     if (ret != ZOK) {
-        LOG_ERROR("Get zookeeper node value field, ret : %d, path : %s", ret, path.c_str());
+        LOG_ERROR("Get zookeeper node value field, ret : %d, err : %s", ret, zerror(ret));
         return false;
     }
     value = buf;
@@ -114,26 +150,38 @@ bool CZkClient::SetNodeValue(const std::string& path, const std::string& value, 
         }
     }
 
-    int ret = zoo_set(_zk_handle, path.c_str(), value.c_str(), value.length(), version);
+    char c_path[256] = { 0 };
+    strcpy(c_path, path.c_str());
+    c_path[path.length() - 1] = '\0';
+
+    char c_value[256] = { 0 };
+    strcpy(c_value, value.c_str());
+    c_value[value.length() - 1] = '\0';
+
+    int ret = zoo_set(_zk_handle, c_path, c_value, strlen(c_value), version);
     if (ret != ZOK) {
-        LOG_ERROR("Set zookeeper node value field, ret : %d, path : %s, value : %s", ret, path.c_str(), value.c_str());
+        LOG_ERROR("Set zookeeper node value field, ret : %d, err : %s", ret, zerror(ret));
         return false;
     }
     return true;
 }
 
 bool CZkClient::GetAllChildren(const std::string& path, std::map<std::string, std::string>& ret_map, bool watch) {
-    if (!_is_connected) {
+    if (!_is_connected || _zk_handle == nullptr) {
         bool ret = ConnectZK();
         if (ret == false) {
             return false;
         }
     }
 
+    char c_path[256] = { 0 };
+    strcpy(c_path, path.c_str());
+    c_path[path.length() - 1] = '\0';
+
     struct String_vector str_vec;
-    int ret = zoo_get_children(_zk_handle, path.c_str(), watch?1:0, &str_vec);
+    int ret = zoo_get_children(_zk_handle, c_path, watch?1:0, &str_vec);
     if (ret != ZOK) {
-        LOG_ERROR("Get zookeeper children field, ret : %d, path : %s", ret, path.c_str());
+        LOG_ERROR("Get zookeeper children field, ret : %d, err : %s", ret, zerror(ret));
         return false;
     }
 

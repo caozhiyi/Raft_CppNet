@@ -34,6 +34,10 @@ void CClient::SendMsg(const std::string& msg_str) {
 	_socket->SyncWrite(str.c_str(), str.length());
 }
 
+void CClient::SetResponseBack(ResponseBack call_back) {
+    _call_back = call_back;
+}
+
 // net io
 void CClient::_ReadCallBack(CMemSharePtr<CSocket>& socket, int err) {
 	std::string ip = socket->GetAddress();

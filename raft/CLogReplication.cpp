@@ -2,11 +2,12 @@
 #include <string.h>         //for memset
 #include "CLogReplication.h"
 
+#include <iostream>
 #define FLAG_STR "%R%N"
 #define FLAG_LEN 4
 #define ONCE_LEN 1024
 
-CBinLog::CBinLog(std::string fine_name) : _file_name(fine_name), _stop(false) {
+CBinLog::CBinLog(std::string fine_name) : _file_name(fine_name) {
 	_file_stream.open(_file_name, std::ios::in|std::ios::app| std::ios::out);
 	if (!_file_stream.good()) {
 		throw std::exception(std::logic_error("open log file failed"));
@@ -18,8 +19,11 @@ CBinLog::~CBinLog() {
 }
 
 void CBinLog::Run() {
-    if (!_stop) {
-        BinLog log = std::move(_Pop());
+    while(!_stop) {
+        BinLog log = _Pop();
+        if (log.first == 0) {
+            break;
+        }
 		std::string log_str = BinLogToStr(log);
 
 		std::unique_lock<std::mutex> lock(_mutex);
@@ -29,6 +33,11 @@ void CBinLog::Run() {
 
 void CBinLog::Stop() {
 	_stop = true;
+    BinLog bin_log;
+    bin_log.first = 0;
+    Push(std::move(bin_log));
+    // wait the sub thread stop
+    Join();
 }
 
 void CBinLog::PushLog(Time time, std::string log) {

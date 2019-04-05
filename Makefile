@@ -33,13 +33,17 @@ all:$(SEV) $(CLI)
 
 $(SEV) : $(OBJS) ./exe/Server.cpp
 	$(CC) $^ -o $@ $(INCLUDES) $(LIBS) $(CCFLAGS)
+	-mkdir output
+	mv $(SEV) output -f
 
 $(CLI) : $(OBJS) ./exe/Client.cpp
 	$(CC) $^ -o $@ $(INCLUDES) $(LIBS) $(CCFLAGS)
+	-mkdir output
+	mv $(CLI) output -f
 
 %.o : %.c
 	$(CC) -c $< $(CCFLAGS)
 
 .PHONY:clean
 clean:
-	rm -rf *.o
+	rm -rf *.o output $(SEV) $(CLI)
