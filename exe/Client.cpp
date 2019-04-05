@@ -1,4 +1,5 @@
 #include <iostream>
+#include <functional>
 #include "CClient.h"
 #include "config.h"
 #include "Log.h"
@@ -20,7 +21,7 @@ int main() {
 	int port = fig.GetIntValue("port");
 
 	CClient client;
-	client.SetResponseBack(ResponseFunc);
+	client.SetResponseBack(std::bind(ResponseFunc, std::placeholders::_1));
 	client.Init(ser_ip, port);
 
 	while (1) {

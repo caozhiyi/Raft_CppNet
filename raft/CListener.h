@@ -10,11 +10,10 @@
 
 typedef std::function<void(int)> SendCallBack;
 typedef unsigned long long Time;
-
+class CNode;
 class CListener
 {
 public:
-    friend class CNode;
 	CListener(CNode* cur_node);
 	~CListener();
 

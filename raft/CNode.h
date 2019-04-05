@@ -54,6 +54,7 @@ private:
 	void _TimeOutCallBack();
 
 private:
+    friend class CListener;
 	NodeRole	_role;
 	CNetObject	_net;
 	NodeInfo	_leader_info;

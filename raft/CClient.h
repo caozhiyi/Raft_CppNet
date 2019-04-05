@@ -8,16 +8,16 @@
 #include "NetObject.h"
 
 typedef std::function<void(int)> ResponseBack;
-class CNode;
+
 class CClient
 {
 public:
-	CClient(CNode* cur_node);
+	CClient();
 	~CClient();
 
 	bool Init(std::string ip, int port);
 
-	void SendMsg(const std::string& msg);
+	void SendMsg(const std::string& msg_str);
 	void SetResponseBack(ResponseBack& call_back);
 
 private:
@@ -29,7 +29,6 @@ private:
 	CNetObject	_net;
 	std::string _ip;
 	short       _port;
-	CNode*      _cur_node;
     CMemSharePtr<CSocket>	_socket;
 	ResponseBack _call_back;
 };

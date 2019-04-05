@@ -31,7 +31,7 @@ void CListener::SendMsg(Time version, int status) {
 		auto item = _send_queue.front();
 		if (item.first < version) {
 			item.second(status);
-			_send_queue.pop()
+			_send_queue.pop();
 		
 		} else {
 			break;
@@ -140,6 +140,7 @@ void CListener::_ReadCallBack(CMemSharePtr<CSocket>& socket, int err) {
 		_send_queue.push(item);
 	}
 	_cur_node->HandleClient(log);
+    socket->SyncRead();
 }
 
 void CListener::_WriteCallBack(CMemSharePtr<CSocket>& socket, int err) {

@@ -4,7 +4,7 @@
 #include "common.h"
 #include "CNode.h"
 
-CClient::CClient(CNode* cur_node) : _cur_node(cur_node) {
+CClient::CClient() {
 
 }
 
@@ -25,15 +25,13 @@ bool CClient::Init(std::string ip, int port) {
 	return true;
 }
 
-void CClient::SendMsg(const std::string& msg) {
+void CClient::SendMsg(const std::string& msg_str) {
 	// make msg string
-	std::string msg_str = CParser::Encode(msg);
+    ClientMsg msg;
+    msg._msg = msg_str;
+	std::string str = CParser::Encode(msg);
 
-	std::unique_lock<std::mutex> lock(_socket_mutex);
-	auto iter = _socket_map.find(ip_port);
-	if (iter != _socket_map.end()) {
-		iter->second->SyncWrite(msg_str.c_str(), msg_str.length());
-	}
+	_socket->SyncWrite(str.c_str(), str.length());
 }
 
 // net io
@@ -45,11 +43,7 @@ void CClient::_ReadCallBack(CMemSharePtr<CSocket>& socket, int err) {
 
 	if (err & EVENT_ERROR_CLOSED) {
 		LOG_ERROR("a connect lost msg. err:%d, ip:%s", err, ip.c_str());
-		std::unique_lock<std::mutex> lock(_socket_mutex);
-		auto iter = _socket_map.find(ip);
-		if (iter != _socket_map.end()) {
-			_socket_map.erase(iter);
-		}
+		_socket.Reset();
 		return;
 	}
 
@@ -72,7 +66,7 @@ void CClient::_ReadCallBack(CMemSharePtr<CSocket>& socket, int err) {
 
 	ClientMsg msg;
 	msg = CParser::DecodeClient(buf);
-	int body_len = msg->_head._body_len;
+	int body_len = msg._head._body_len;
 	if (body_len > 0) {
 		len = socket->_read_event->_buffer->GetCanReadSize();
 		// not recv a complete msg
@@ -93,14 +87,15 @@ void CClient::_ReadCallBack(CMemSharePtr<CSocket>& socket, int err) {
 	LOG_INFO("get a msg from %s", ip.c_str());
 	if (msg._head._status == RAFT_RELEADER) {
 		std::string ip = msg._msg.substr(0, msg._msg.find(":"));
-		int port = std::to_integer(msg._msg.substr(msg._msg.find(":") + 1));
+		int port = atoi(msg._msg.substr(msg._msg.find(":") + 1).c_str());
 		socket->SyncDisconnection();
-		socket = _net.Connection(ip, port);
+		socket = _net.Connection(port, ip);
 	}
 
 	if (_call_back) {
 		_call_back(msg._head._status);
 	}
+    socket->SyncRead();
 }
 
 void CClient::_WriteCallBack(CMemSharePtr<CSocket>& socket, int err) {

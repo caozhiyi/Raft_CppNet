@@ -380,6 +380,7 @@ void CNode::_ReadCallBack(CMemSharePtr<CSocket>& socket, int err) {
 	
 	LOG_INFO("get a msg from %s", ip.c_str());
 	HandleMsg(ip, msg);
+    socket->SyncRead();
 }
 
 void CNode::_WriteCallBack(CMemSharePtr<CSocket>& socket, int err) {
