@@ -40,6 +40,7 @@ bool CNode::Init() {
 	_net.SetAcceptCallback(std::bind(&CNode::_AcceptCallBack, this, std::placeholders::_1, std::placeholders::_2));
 	_net.SetReadCallback(std::bind(&CNode::_ReadCallBack, this, std::placeholders::_1, std::placeholders::_2));
 	_net.SetWriteCallback(std::bind(&CNode::_WriteCallBack, this, std::placeholders::_1, std::placeholders::_2));
+    _net.SetConnectionCallback(std::bind(&CNode::_ConnectCallBack, this, std::placeholders::_1, std::placeholders::_2));
 
 	// start net with 2 thread
 	_net.Init(2);
@@ -425,6 +426,15 @@ void CNode::_AcceptCallBack(CMemSharePtr<CSocket>& socket, int err) {
 	LOG_INFO("recv a connect from ip  %s", ip.c_str());
 }
 
+void CNode::_ConnectCallBack(CMemSharePtr<CSocket>& socket, int err) {
+    std::string ip = socket->GetAddress();
+    short port = socket->GetPort();
+    ip.append(":");
+    ip.append(std::to_string(port));
+
+    LOG_INFO("connect to ip  %s", ip.c_str());
+}
+
 // timer
 void CNode::_HeartCallBack() {
 	if (_role == Leader) {
@@ -436,13 +446,10 @@ void CNode::_HeartCallBack() {
 }
 
 void CNode::_TimeOutCallBack() {
-	if (_role == Leader) {
-		SendAllHeart();
-		LoadConfig();
-		LOG_INFO("heart call back.");
-	
-	} else if (_role) {
-		_role = Candidate;
-		SendAllVote();
-	}
+	if (_role != Leader) {
+        _role = Candidate;
+        SendAllVote();
+		LOG_INFO("to be a candidate.");
+	} 
+    LOG_INFO("time out call back.");
 }

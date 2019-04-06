@@ -35,6 +35,11 @@ $(SEV) : $(OBJS) ./exe/Server.cpp
 	$(CC) $^ -o $@ $(INCLUDES) $(LIBS) $(CCFLAGS)
 	-mkdir output
 	mv $(SEV) output -f
+	cp output/$(SEV) output/11/
+	cp output/$(SEV) output/22/
+	cp output/$(SEV) output/33/
+	cp output/$(SEV) output/44/
+	cp output/$(SEV) output/55/
 
 $(CLI) : $(OBJS) ./exe/Client.cpp
 	$(CC) $^ -o $@ $(INCLUDES) $(LIBS) $(CCFLAGS)

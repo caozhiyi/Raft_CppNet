@@ -24,6 +24,9 @@ bool CConfig::LoadFile(const std::string& path) {
 	while (!file.eof()) {
 		char buf[1024] = { 0 };
 		file.getline(buf, 1024);
+        if (strlen(buf) < 3) {
+            continue;
+        }
 		line = buf;
 		_Trim(line);
 		if (line[0] == '#') {
@@ -34,6 +37,7 @@ bool CConfig::LoadFile(const std::string& path) {
 		value = line.substr(line.find_first_of("=") + 1);
 		_Trim(key);
 		_Trim(value);
+        LOG_INFO("load config key : %s, value : %s", key.c_str(), value.c_str());
 		temp_map[key] = value;
 	}
 
@@ -99,7 +103,7 @@ bool CConfig::GetBoolValue(const std::string& key) {
 	}
 }
 
-void CConfig::_Trim(std::string line) {
+void CConfig::_Trim(std::string& line) {
 	if (line.empty()) {
 		return;
 	}

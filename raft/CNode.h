@@ -48,7 +48,7 @@ private:
 	void _ReadCallBack(CMemSharePtr<CSocket>& socket, int err);
 	void _WriteCallBack(CMemSharePtr<CSocket>& socket, int err);
 	void _AcceptCallBack(CMemSharePtr<CSocket>& socket, int err);
-
+    void _ConnectCallBack(CMemSharePtr<CSocket>& socket, int err);
 
 	// timer
 	void _HeartCallBack();

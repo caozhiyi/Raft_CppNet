@@ -4,7 +4,7 @@
 #include "common.h"
 #include "Log.h"
 
-const char* ZK_NODE = "/node_info/";
+const char* ZK_NODE = "/node_info";
 
 CZkNodeInfo::CZkNodeInfo() {
 
@@ -34,6 +34,7 @@ bool CZkNodeInfo::RegisterNode() {
             return false;
         }
     }
+    path.append("/");
 	path.append(_local_ip_port);
 	return CZkClient::Instance().CreateNode(path, _local_ip_port, true);
 }

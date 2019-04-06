@@ -19,7 +19,7 @@ public:
 	bool GetBoolValue(const std::string& key);
 
 private:
-	void _Trim(std::string line);
+	void _Trim(std::string& line);
 
 private:
 	std::string _file;
