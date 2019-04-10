@@ -22,7 +22,7 @@ std::string CParser::Encode(Msg& msg) {
 	msg._head._body_len = body.size();
 	msg._head._num_msg = msg._msg.size();
 
-	std::string ret(head);
+	std::string ret(head, header_len);
 	ret.append(body);
 	return std::move(ret);
 }
@@ -49,7 +49,7 @@ std::string CParser::Encode(ClientMsg& msg) {
 	memcpy(head, &msg._head, client_header_len);
 
 	msg._head._body_len = msg._msg.length();
-	std::string ret(head);
+	std::string ret(head, client_header_len);
 	ret.append(msg._msg);
 	return std::move(ret);
 }
