@@ -67,6 +67,8 @@ private:
 	CBinLog     _bin_log;
 	std::string _leader_ip_port;
 
+    std::atomic_bool _done_msg;	    // notice follower done msg to file
+
 	std::string _zk_ip_port;
 	std::string _local_ip;
 	int			_local_port;

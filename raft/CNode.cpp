@@ -6,6 +6,7 @@
 #include <iostream>
 
 CNode::CNode(const std::string& config_path) :
+    _done_msg(false),
 	_role(Follower),
 	_client_listener(nullptr),
 	_config_path(config_path) {
@@ -114,6 +115,11 @@ void CNode::SendAllHeart() {
 	msg._head._type = Heart;
 	msg._head._newest_version = _bin_log.GetNewestTime();
 	
+    if (_done_msg) {
+        msg._head._type |= DoneMsg;
+        _done_msg = false;
+    }
+
 	{
 		std::unique_lock<std::mutex> lock(_msg_mutex);
 		msg._msg = std::move(_cur_msg);
@@ -164,27 +170,32 @@ void CNode::HandleMsg(const std::string ip_port, const Msg* msg) {
 		LOG_ERROR("get a invalid msg.");
 		return;
 	}
-	switch (msg->_head._type)
-	{
-	case Heart:
-		HandleHeart(ip_port, *msg);
-		break;
-	case ReHeart:
-		HandleReHeart(ip_port, *msg);
-		break;
-	case Campaign:
-		HandleCampaign(ip_port, *msg);
-		break;
-	case Vote:
-		HandleVote(ip_port, *msg);
-		break;
-	case Sync:
-		HandleSync(ip_port, *msg);
-		break;
-	default:
-		LOG_ERROR("get a unknow type msg.");
-		break;
-	}
+    if (msg->_head._type & DoneMsg) {
+        HandleDoneMsg(ip_port, *msg);
+    }
+
+    if (msg->_head._type & Heart) {
+        HandleHeart(ip_port, *msg);
+    
+    } else if (msg->_head._type & ReHeart) {
+        HandleReHeart(ip_port, *msg);
+
+    } else if (msg->_head._type & Campaign) {
+        HandleCampaign(ip_port, *msg);
+
+    } else if (msg->_head._type & Vote) {
+        HandleVote(ip_port, *msg);
+
+    } else if (msg->_head._type & Sync) {
+        HandleSync(ip_port, *msg);
+
+    } else if (msg->_head._type & ToSync)
+        
+
+    } else {
+        LOG_ERROR("get a unknow type msg.");
+    }
+
 	delete msg;
 }
 
@@ -240,6 +251,7 @@ void CNode::HandleReHeart(const std::string& ip_port, const Msg& msg) {
 		std::unique_lock<std::mutex> lock(_socket_mutex);
 		// get more than half response
 		if (_msg_re_count > _socket_map.size() / 2) {
+            _done_msg = true;
 			_msg_re_count = 0;
 
 			_client_listener->SendMsg(msg._head._newest_version, RAFT_OK);
@@ -280,8 +292,8 @@ void CNode::HandleVote(const std::string& ip_port, const Msg& msg) {
 void CNode::HandleSync(const std::string& ip_port, const Msg& msg) {
 	if (_role == Leader) {
 		Msg msg;
+        msg._head._type = Heart;
 		msg._head._newest_version = msg._head._newest_version;
-
 
 		std::vector<BinLog> log_vec;
 		_bin_log.GetLog(msg._head._newest_version, log_vec);

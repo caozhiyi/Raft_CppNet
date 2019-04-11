@@ -13,13 +13,13 @@ enum NodeRole {
 
 // message type
 enum MsgType {
-	Heart	 = 1,   // heart 
-	ReHeart  = 2,	// heart response
-	DoneMsg  = 3,	// client receive and push the message to file
-	Campaign = 4,	// campaign to be leader
-	Vote	 = 5,	// vote 
-	Sync	 = 6,	// sync the message from  leader
-	ToSync   = 7    // follower get it to sync from leader
+	Heart	 = 0x01,    // heart 
+	ReHeart  = 0x02,    // heart response
+	DoneMsg  = 0x04,    // client receive and push the message to file
+	Campaign = 0x08,    // campaign to be leader
+	Vote	 = 0x10,    // vote 
+	Sync	 = 0x20,    // sync the message from  leader
+	ToSync   = 0x40     // follower get it to sync from leader
 };
 
 // node info
