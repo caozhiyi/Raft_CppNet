@@ -189,8 +189,8 @@ void CNode::HandleMsg(const std::string ip_port, const Msg* msg) {
     } else if (msg->_head._type & Sync) {
         HandleSync(ip_port, *msg);
 
-    } else if (msg->_head._type & ToSync)
-        
+    } else if (msg->_head._type & ToSync) {
+        HandleToSync(ip_port, *msg);
 
     } else {
         LOG_ERROR("get a unknow type msg.");
@@ -383,7 +383,7 @@ void CNode::_ReadCallBack(CMemSharePtr<CSocket>& socket, int err) {
 	}
 	// can make a msg pool.
 	Msg *msg = new Msg;
-	*msg = CParser::Decode(buf);
+	*msg = CParser::Decode(std::string(buf, len));
 	int body_len = msg->_head._body_len;
 	if (body_len > 0) {
 		len = socket->_read_event->_buffer->GetCanReadSize();

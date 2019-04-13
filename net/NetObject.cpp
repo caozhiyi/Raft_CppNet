@@ -246,6 +246,7 @@ void CNetObject::_WriteFunction(CMemSharePtr<CEventHandler>& event, int err) {
 	if (!event) {
 		return;
 	}
+
 	auto socket_ptr = event->_client_socket.Lock();
 	if (err & EVENT_WRITE && _write_call_back) {
 		err &= ~EVENT_WRITE;
@@ -253,7 +254,7 @@ void CNetObject::_WriteFunction(CMemSharePtr<CEventHandler>& event, int err) {
 			err |= EVENT_ERROR_DONE;
 		}
 		_write_call_back(socket_ptr, err);
-		if (err == EVENT_ERROR_CLOSED) {
+		if (err & EVENT_ERROR_CLOSED) {
 			std::unique_lock<std::mutex> lock(_mutex);
 			_socket_map.erase(socket_ptr->GetSocket());
 		}

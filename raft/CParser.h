@@ -4,17 +4,20 @@
 #include "common.h"
 // Ω‚Œˆ–≠“È
 
-class CParser
-{
+class CParser{
 public:
 	CParser();
 	~CParser();
 
 	static std::string Encode(Msg& msg);
-	static Msg Decode(const std::string& msg_str, bool only_header = false);
+	static Msg Decode(const std::string& msg_str, bool only_header = true);
 
 	static std::string Encode(ClientMsg& msg);
-	static ClientMsg DecodeClient(const std::string& msg_str, bool only_header = false);
+	static ClientMsg DecodeClient(const std::string& msg_str, bool only_header = true);
+
+private:
+    static std::string EncodeHead(const MsgHead& head);
+    static std::string EncodeHead(const ClientMsgHead& head);
 };
 
 #endif

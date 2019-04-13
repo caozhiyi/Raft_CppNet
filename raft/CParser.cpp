@@ -30,14 +30,14 @@ std::string CParser::Encode(Msg& msg) {
 Msg CParser::Decode(const std::string& msg_str, bool only_header) {
 	Msg msg;
 	memcpy(&msg._head, msg_str.c_str(), header_len);
-	msg_str = msg_str.substr(header_len + 1);
 	if (!only_header) {
+        std::string str = msg_str.substr(header_len);
 		int pos = 0;
 		std::string one_msg;
 		for (int i = 0; i < msg._head._num_msg; i++) {
-			pos = msg_str.find_first_of(SPILT);
-			one_msg = msg_str.substr(0, pos);
-			msg_str = msg_str.substr(pos + sizeof(SPILT));
+			pos = str.find_first_of(SPILT);
+			one_msg = str.substr(0, pos);
+            str = str.substr(pos + sizeof(SPILT));
 			msg._msg.push_back(one_msg);
 		}
 	}
@@ -57,7 +57,9 @@ std::string CParser::Encode(ClientMsg& msg) {
 ClientMsg CParser::DecodeClient(const std::string& msg_str, bool only_header) {
 	ClientMsg msg;
 	memcpy(&msg._head, msg_str.c_str(), client_header_len);
-	msg_str = msg_str.substr(client_header_len + 1);
-	msg._msg = msg_str;
+    if (!only_header) {
+        msg_str = msg_str.substr(client_header_len + 1);
+        msg._msg = msg_str;
+    }
 	return std::move(msg);
 }
