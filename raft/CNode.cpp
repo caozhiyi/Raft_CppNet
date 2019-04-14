@@ -70,7 +70,7 @@ bool CNode::Init() {
 			auto soket = _net.Connection(iter->_port, iter->_ip);
 			ip_port = iter->_ip + ":" + std::to_string(iter->_port);
 			if (soket) {
-				_socket_map["ip_port"] = soket;
+				_socket_map[ip_port] = soket;
 
 			} else {
 				LOG_ERROR("connect node failed. ip:%s, port:%d", iter->_ip.c_str(), iter->_port);
@@ -162,7 +162,10 @@ void CNode::SendMsg(const std::string& ip_port, Msg& msg) {
 	auto iter = _socket_map.find(ip_port);
 	if (iter != _socket_map.end()) {
 		iter->second->SyncWrite(msg_str.c_str(), msg_str.length());
-	}
+
+    } else {
+        LOG_ERROR("can't find the socket.");
+    }
 }
 
 void CNode::HandleMsg(const std::string ip_port, const Msg* msg) {
@@ -281,12 +284,13 @@ void CNode::HandleVote(const std::string& ip_port, const Msg& msg) {
 		_vote_count++;
 		std::unique_lock<std::mutex> lock(_socket_mutex);
 		// can be a leader
-		if (_vote_count > _socket_map.size()) {
+		if (_vote_count >= _socket_map.size()) {
 			_role = Leader;
 			SendAllHeart();
 		}
 	}
 	// not a Candidater do nothing
+    LOG_INFO("recv a vote msg from ip : %s, size : %d", ip_port.c_str(), _vote_count.load());
 }
 
 void CNode::HandleSync(const std::string& ip_port, const Msg& msg) {
@@ -460,6 +464,9 @@ void CNode::_HeartCallBack() {
 void CNode::_TimeOutCallBack() {
 	if (_role != Leader) {
         _role = Candidate;
+        
+        // vote self
+        _vote_count = 1;
         SendAllVote();
 		LOG_INFO("to be a candidate.");
 	} 
