@@ -111,9 +111,8 @@ bool CNode::LoadConfig() {
 }
 
 void CNode::SendAllHeart() {
-	Msg msg;
-	msg._head._type = Heart;
-	msg._head._newest_version = _bin_log.GetNewestTime();
+    
+	Time version = _bin_log.GetNewestTime();
 	
     if (_done_msg) {
         msg._head._type |= DoneMsg;
@@ -173,6 +172,9 @@ void CNode::HandleMsg(const std::string ip_port, const Msg* msg) {
 		LOG_ERROR("get a invalid msg.");
 		return;
 	}
+    
+    LOG_INFO("get a msg. type : %d", msg->_head._type);
+
     if (msg->_head._type & DoneMsg) {
         HandleDoneMsg(ip_port, *msg);
     }
